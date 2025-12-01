@@ -1,0 +1,431 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Homologación: El Niño vs. Walmart</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Inter', sans-serif; 
+            background: #f8fafc; /* Fondo claro profesional */
+            color: #1e293b;
+        }
+        
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+
+        /* --- UI CARD --- */
+        #ui-layer {
+            position: absolute;
+            top: 50%;
+            left: 30px;
+            transform: translateY(-50%);
+            width: 380px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+        }
+
+        h1 { margin: 0 0 5px 0; font-size: 24px; font-weight: 800; background: linear-gradient(90deg, #0284c7, #2563eb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h2 { margin: 0 0 20px 0; font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+        
+        .desc-box {
+            min-height: 80px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #475569;
+            margin-bottom: 25px;
+        }
+
+        /* Botones de Pasos */
+        .step-indicator {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 14px 18px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #fff;
+            color: #64748b;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: left;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        button:hover { transform: translateX(4px); border-color: #cbd5e1; }
+        
+        /* Estilos activos por tipo */
+        button.active-ocean { background: linear-gradient(90deg, #0ea5e9, #2563eb); color: white; border: none; box-shadow: 0 8px 20px rgba(14, 165, 233, 0.3); }
+        button.active-store { background: linear-gradient(90deg, #f59e0b, #ea580c); color: white; border: none; box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3); }
+        button.active-math { background: linear-gradient(90deg, #8b5cf6, #d946ef); color: white; border: none; box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3); }
+
+        .icon { margin-right: 10px; font-size: 16px; }
+
+        /* Etiquetas Flotantes */
+        .label-marker {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <h1>Data Science Homology</h1>
+        <h2 id="subtitle">Del Clima al Negocio</h2>
+        
+        <div class="desc-box" id="description">
+            Bienvenido. Vamos a demostrar visualmente por qué las herramientas para predecir El Niño son las mismas que usa Walmart.
+        </div>
+
+        <div class="step-indicator">
+            <button id="btn1" class="active-ocean" onclick="setStep(1)"><span class="icon">🌊</span> 1. Océano (Datos Crudos)</button>
+            <button id="btn2" onclick="setStep(2)"><span class="icon">🛒</span> 2. Walmart (Transacciones)</button>
+            <button id="btn3" onclick="setStep(3)"><span class="icon">📐</span> 3. El Vector (La Tendencia)</button>
+            <button id="btn4" onclick="setStep(4)"><span class="icon">✨</span> 4. Proyección (Limpieza)</button>
+            <button id="btn5" onclick="setStep(5)"><span class="icon">🔄</span> 5. Conclusión (Homología)</button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+    
+    <div id="lbl-left" class="label-marker">Australia</div>
+    <div id="lbl-right" class="label-marker">América (Perú)</div>
+
+<script>
+    // --- 1. ESCENA Y CONFIGURACIÓN ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf8fafc);
+    scene.fog = new THREE.Fog(0xf8fafc, 50, 120);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 50, 80);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    // Luces
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.8);
+    scene.add(hemiLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    dirLight.position.set(30, 50, 30);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    // --- 2. SISTEMA DE PARTÍCULAS (EL ALMA DE LA DATA) ---
+    // Usaremos las mismas partículas para representar AGUA y VENTAS (Morphing)
+    
+    const count = 4000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    
+    // Guardamos "Destinos" para la interpolación
+    const oceanCoords = []; // x,y,z para el mapa
+    const storeCoords = []; // x,y,z para el scatter plot
+    
+    // Colores base
+    const colWater = new THREE.Color(0x3b82f6);
+    const colProductA = new THREE.Color(0xf59e0b); // Comida (Naranja)
+    const colProductB = new THREE.Color(0x10b981); // Electro (Verde)
+    const colProductC = new THREE.Color(0xef4444); // Ropa (Rojo)
+
+    // Generar Coordenadas Océano (Plano Geográfico)
+    for(let i=0; i<count; i++) {
+        const x = (Math.random() - 0.5) * 100;
+        const z = (Math.random() - 0.5) * 40;
+        oceanCoords.push({x, y:0, z, noiseOffset: Math.random()*100});
+        
+        // Inicializar
+        positions[i*3] = x;
+        positions[i*3+1] = 0;
+        positions[i*3+2] = z;
+        
+        colors[i*3] = colWater.r;
+        colors[i*3+1] = colWater.g;
+        colors[i*3+2] = colWater.b;
+    }
+
+    // Generar Coordenadas Walmart (Nube 3D de categorías)
+    // Simulamos 3 clusters de productos
+    for(let i=0; i<count; i++) {
+        // Asignar categoría random
+        const cat = Math.floor(Math.random() * 3);
+        
+        // Centro del cluster
+        let cx=0, cy=0, cz=0;
+        let baseCol;
+        
+        if(cat===0) { cx=-20; cy=5; baseCol=colProductA; } // Comida
+        if(cat===1) { cx=20; cy=-5; baseCol=colProductB; } // Electro
+        if(cat===2) { cx=0; cy=20; baseCol=colProductC; }  // Ropa
+        
+        // Dispersión (Ruido de compra)
+        const x = cx + (Math.random()-0.5) * 25;
+        const y = cy + (Math.random()-0.5) * 25;
+        const z = cz + (Math.random()-0.5) * 25;
+        
+        storeCoords.push({x, y, z, cat, baseCol});
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({ size: 0.8, vertexColors: true, transparent:true, opacity:0.8 });
+    const particles = new THREE.Points(geometry, material);
+    scene.add(particles);
+
+    // --- 3. EL VECTOR (LA TENDENCIA) ---
+    const vectorGroup = new THREE.Group();
+    
+    // Vector Océano (El Niño)
+    const arrowOcean = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(-30,10,0), 0, 0xef4444, 5, 3);
+    
+    // Vector Walmart (Tendencia "Parrillero") - Cruza los clusters
+    const dirStore = new THREE.Vector3(1, 0.5, 0).normalize();
+    const arrowStore = new THREE.ArrowHelper(dirStore, new THREE.Vector3(-20,-10,0), 0, 0x8b5cf6, 5, 3);
+    
+    vectorGroup.add(arrowOcean);
+    vectorGroup.add(arrowStore);
+    scene.add(vectorGroup);
+    
+    // --- 4. CONTINENTES (Solo visibles en modo Océano) ---
+    const landGeo = new THREE.PlaneGeometry(120, 60);
+    // Usamos wireframe simple para referencia
+    const landMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8, wireframe:true, transparent:true, opacity:0.1 });
+    const mapPlane = new THREE.Mesh(landGeo, landMat);
+    mapPlane.rotation.x = -Math.PI/2;
+    mapPlane.position.y = -5;
+    scene.add(mapPlane);
+
+
+    // --- 5. LÓGICA DE ESTADOS Y ANIMACIÓN ---
+    
+    const state = {
+        mode: 0, // 0=Ocean, 1=Store
+        transition: 0, // 0 a 1 (Lerp entre coordenadas)
+        noiseLevel: 1, // 1=Caos, 0=Orden
+        vectorLen: 0,
+        projection: 0 // 0=Normal, 1=Proyectado (Aplanado)
+    };
+
+    function setStep(step) {
+        // UI Update
+        document.querySelectorAll('button').forEach(b => {
+            b.className = ''; // Reset classes
+        });
+        const btn = document.getElementById('btn'+step);
+        
+        // Textos
+        const desc = document.getElementById('description');
+        const lblL = document.getElementById('lbl-left');
+        const lblR = document.getElementById('lbl-right');
+
+        if(step === 1) {
+            btn.className = 'active-ocean';
+            desc.innerHTML = "<b>Paso 1: El Océano de Datos.</b><br>Cada punto es una temperatura. Hay olas y caos (ruido). Es difícil ver si viene El Niño a simple vista.";
+            new TWEEN.Tween(state).to({ mode:0, transition:0, noiseLevel:1, vectorLen:0, projection:0 }, 1500).easing(TWEEN.Easing.Cubic.InOut).start();
+            
+            lblL.innerText = "Australia"; lblR.innerText = "América";
+            lblL.style.opacity = 1; lblR.style.opacity = 1;
+            mapPlane.visible = true;
+
+        } else if(step === 2) {
+            btn.className = 'active-store';
+            desc.innerHTML = "<b>Paso 2: Transformación a Walmart.</b><br>Misma matemática, distintos datos. Ahora los puntos son compras (Comida, Electro, Ropa). También hay caos: compras aleatorias.";
+            new TWEEN.Tween(state).to({ mode:1, transition:1, noiseLevel:1, vectorLen:0, projection:0 }, 1500).easing(TWEEN.Easing.Cubic.InOut).start();
+            
+            lblL.innerText = "Prod. Baratos"; lblR.innerText = "Prod. Caros"; // Abstracto
+            lblL.style.opacity = 0; lblR.style.opacity = 0; // Ocultar para limpieza
+            mapPlane.visible = false;
+
+        } else if(step === 3) {
+            btn.className = 'active-math';
+            desc.innerHTML = "<b>Paso 3: El Vector (Eigenvector).</b><br>Calculamos la covarianza. La flecha indica la <b>Dirección Principal</b>. En el Océano es 'Calentamiento'; aquí es 'Cliente Parrillero'.";
+            new TWEEN.Tween(state).to({ mode:1, transition:1, noiseLevel:0.8, vectorLen:1, projection:0 }, 1000).easing(TWEEN.Easing.Back.Out).start();
+
+        } else if(step === 4) {
+            btn.className = 'active-math';
+            desc.innerHTML = "<b>Paso 4: Proyección (Limpieza).</b><br>Eliminamos el ruido proyectando los datos sobre el vector. Las compras aleatorias desaparecen; queda la tendencia pura.";
+            new TWEEN.Tween(state).to({ mode:1, transition:1, noiseLevel:0, vectorLen:1, projection:1 }, 1500).easing(TWEEN.Easing.Cubic.InOut).start();
+
+        } else if(step === 5) {
+            // Modo "Comparación Rápida" (Oscilar)
+            btn.className = 'active-ocean';
+            desc.innerHTML = "<b>Paso 5: La Homología.</b><br>El Niño y la Temporada de Ventas son lo mismo matemáticamente: un patrón fuerte oculto en ruido. Los autovectores revelan ambos.";
+            // Animación especial de loop en el render loop
+            state.projection = 1; // Mantener limpio
+            state.vectorLen = 1;
+        }
+        
+        // Guardar paso actual para lógica custom
+        window.currentStep = step;
+    }
+
+    // --- 6. RENDER LOOP ---
+    
+    let time = 0;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        TWEEN.update();
+        time += 0.01;
+
+        // Lógica especial Paso 5 (Oscilación automática)
+        if(window.currentStep === 5) {
+            // Oscilar entre 0 y 1 suavemente
+            state.transition = 0.5 + Math.sin(time) * 0.5;
+            state.mode = state.transition > 0.5 ? 1 : 0;
+            
+            // Actualizar etiquetas dinámicamente
+            const lblL = document.getElementById('lbl-left');
+            const lblR = document.getElementById('lbl-right');
+            if(state.transition < 0.2) { 
+                lblL.innerText = "Australia"; lblR.innerText = "América"; 
+                lblL.style.opacity=1; lblR.style.opacity=1;
+            } else if (state.transition > 0.8) {
+                lblL.innerText = "Comida"; lblR.innerText = "Electro";
+                lblL.style.opacity=1; lblR.style.opacity=1;
+            } else {
+                lblL.style.opacity=0; lblR.style.opacity=0;
+            }
+        }
+
+        const pos = particles.geometry.attributes.position.array;
+        const col = particles.geometry.attributes.color.array;
+
+        // Actualizar Flechas
+        // Flecha Océano (Roja) - Visible si transition < 0.5
+        const showOcean = (1 - state.transition);
+        arrowOcean.setLength(state.vectorLen * 60 * showOcean, 10*showOcean, 5*showOcean);
+        
+        // Flecha Store (Violeta) - Visible si transition > 0.5
+        const showStore = state.transition;
+        arrowStore.setLength(state.vectorLen * 50 * showStore, 10*showStore, 5*showStore);
+
+
+        for(let i=0; i<count; i++) {
+            const idx = i*3;
+            
+            // 1. Calcular posición OCÉANO
+            const oc = oceanCoords[i];
+            // Ruido de olas
+            const waveY = Math.sin(oc.x * 0.1 + time*2) * 2 * state.noiseLevel; 
+            // Patrón El Niño (Lengua de calor proyectada)
+            let ninoY = 0;
+            if(state.projection > 0) {
+                 if(oc.x > -20) ninoY = Math.exp(-0.01*oc.z*oc.z) * 10; // Forma gaussiana
+            }
+            
+            const px_ocean = oc.x;
+            const py_ocean = waveY + ninoY * state.projection; // Si proyección=1, aparece el patrón, si no, ruido
+            const pz_ocean = oc.z;
+
+            // 2. Calcular posición STORE
+            const st = storeCoords[i];
+            // Ruido de compra (vibración)
+            const noiseX = Math.sin(time + i) * 2 * state.noiseLevel;
+            const noiseY = Math.cos(time + i) * 2 * state.noiseLevel;
+            
+            // Proyección al vector (Aplanamiento hacia la línea morada)
+            // Si projection=1, los puntos se alinean al vector (1, 0.5, 0)
+            // Hacemos una mezcla (Lerp) hacia la línea
+            const dot = (st.x * dirStore.x + st.y * dirStore.y); // Proyección escalar simple
+            const projX = dot * dirStore.x;
+            const projY = dot * dirStore.y;
+            const projZ = st.z * 0.1; // Aplanar Z
+
+            const px_store = (st.x + noiseX) * (1-state.projection) + projX * state.projection;
+            const py_store = (st.y + noiseY) * (1-state.projection) + projY * state.projection;
+            const pz_store = (st.z) * (1-state.projection) + projZ * state.projection;
+
+            // 3. INTERPOLACIÓN (MORPHING)
+            // Lerp entre Océano y Store basado en state.transition
+            const t = state.transition;
+            
+            pos[idx]   = px_ocean * (1-t) + px_store * t;
+            pos[idx+1] = py_ocean * (1-t) + py_store * t;
+            pos[idx+2] = pz_ocean * (1-t) + pz_store * t;
+
+            // 4. COLOR
+            // Ocean: Azul
+            // Store: Categoría
+            const r_oc = colWater.r; const g_oc = colWater.g; const b_oc = colWater.b;
+            const stCol = st.baseCol;
+            
+            // Si estamos en Store y proyectados, brillamos más
+            const boost = state.projection * 0.5;
+
+            col[idx]   = r_oc * (1-t) + (stCol.r+boost) * t;
+            col[idx+1] = g_oc * (1-t) + (stCol.g+boost) * t;
+            col[idx+2] = b_oc * (1-t) + (stCol.b+boost) * t;
+        }
+
+        particles.geometry.attributes.position.needsUpdate = true;
+        particles.geometry.attributes.color.needsUpdate = true;
+        
+        // Movimiento cámara
+        camera.position.x = Math.sin(time*0.1) * 20;
+        camera.lookAt(0,0,0);
+        
+        // Update Labels
+        if(window.currentStep === 1) {
+            updateLabel('lbl-left', -40, 0, 0);
+            updateLabel('lbl-right', 40, 0, 0);
+        } else if (window.currentStep === 5 && state.transition < 0.5) {
+            updateLabel('lbl-left', -40, 0, 0);
+            updateLabel('lbl-right', 40, 0, 0);
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    function updateLabel(id, x, y, z) {
+        const el = document.getElementById(id);
+        const v = new THREE.Vector3(x,y,z);
+        v.project(camera);
+        const sx = (v.x * .5 + .5) * window.innerWidth;
+        const sy = (v.y * -.5 + .5) * window.innerHeight;
+        el.style.transform = `translate(-50%,-50%) translate(${sx}px,${sy}px)`;
+    }
+
+    // Init
+    setStep(1);
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth/window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+</script>
+</body>
+</html>
